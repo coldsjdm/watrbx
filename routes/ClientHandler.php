@@ -11,16 +11,7 @@ function setupClientHandlerRoutes($router) {
         $timestamp = date("c", strtotime("now"));
         $json_data = json_encode([
             "tts" => false,
-            "embeds" => [
-                [
-                    "title" => "Chat Log!",
-                    "type" => "rich",
-                    
-                    "description" => "$user: $chat",
-                    "timestamp" => $timestamp,
-                    "color" => hexdec( "007182" ),
-                ]
-            ]
+            "content" => "$user: $chat",
 
         ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 
@@ -295,36 +286,6 @@ function setupClientHandlerRoutes($router) {
     
     $router->get('/report/systats/', function() {
 
-        function sendsystatsnotif($text) {
-            $timestamp = date("c", strtotime("now"));
-                    $json_data = json_encode([
-                        "tts" => false,
-                        "embeds" => [
-                            [
-                                "title" => "Chat Log!",
-                                "type" => "rich",
-                                
-                                "description" => $text,
-                                "timestamp" => $timestamp,
-                                "color" => hexdec( "007182" ),
-                            ]
-                        ]
-            
-                    ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
-            
-            
-                    $ch = curl_init( systatswebhook );
-                    curl_setopt( $ch, CURLOPT_HTTPHEADER, array('Content-type: application/json'));
-                    curl_setopt( $ch, CURLOPT_POST, 1);
-                    curl_setopt( $ch, CURLOPT_POSTFIELDS, $json_data);
-                    curl_setopt( $ch, CURLOPT_FOLLOWLOCATION, 1);
-                    curl_setopt( $ch, CURLOPT_HEADER, 0);
-                    curl_setopt( $ch, CURLOPT_RETURNTRANSFER, 1);
-            
-                    $response = curl_exec( $ch );
-                    curl_close( $ch );
-        }
-
         
         if(isset($_GET["UserID"]) && isset($_GET["Message"]) && isset($_GET["apikey"])){
             
@@ -341,11 +302,13 @@ function setupClientHandlerRoutes($router) {
             $cheater = $cheaterinfo->fetch(PDO::FETCH_ASSOC);
             
             if($cheater == false){
-                sendsystatsnotif("systats trip!\n\nguest\nid: $userid");
+                $logging = new logging();
+                $logging->logwebhook("Possible Guest Cheater Detected!\nUser: " . $userid . "\nCode: $message");
                 http_response_code(200);
             } else {
                     
-                ("systats trip!\n\n" .$cheater["username"] . "\nsystat: $message");
+                $logging = new logging();
+                $logging->logwebhook("Possible Cheater Detected!\nUser: " . $cheater["username"] . "\nCode: $message");
                 http_response_code(200);
                 
                 if($message == "murdle"){
@@ -358,6 +321,7 @@ function setupClientHandlerRoutes($router) {
                 
             }
         
+            
         } else {
             http_response_code(400);
             die("Bad Request.");
@@ -1354,7 +1318,7 @@ function setupClientHandlerRoutes($router) {
             "UserName" => $user,
             "SeleniumTestMode" => false,
             "UserId" => $id,
-            "SuperSafeChat" => false,
+            "SuperSafeChat" => true,
             "CharacterAppearance" => $charapp,
             "ClientTicket" => $ticket,
             "GameId" => $pid, // need to change this to universe id.
