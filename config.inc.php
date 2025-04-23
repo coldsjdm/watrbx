@@ -55,3 +55,4 @@ define("errorwebhook", "");
 define("chatwebhook", "");
 define("roblosecurity", "");
 define("turnstilekey", "");
+define("systatswebhook", "");
