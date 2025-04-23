@@ -232,7 +232,7 @@ function setupClientHandlerRoutes($router) {
         header("Content-type: application/json");
         http_response_code(200);
         die("True");
-        die('{"data":["0.235.0pcplayer"]}');
+        //die('{"data":["0.235.0pcplayer"]}');
     });
     
     $router->get('/ownership/hasAsset', function() {
@@ -253,6 +253,8 @@ function setupClientHandlerRoutes($router) {
             
             $session = $_COOKIE[".ROBLOSECURITY"];
             
+            include(baseurl . "/conn.php");
+
             $userfetch = $pdo->prepare("SELECT ownid FROM sessions WHERE id = :id");
             $userfetch->bindParam(':id', $session, PDO::PARAM_STR);
             $userfetch->execute();
@@ -268,9 +270,6 @@ function setupClientHandlerRoutes($router) {
             die(json_encode($returnarray));
             
         } else {
-            http_response_code(200);
-            $returnarray = array("Robux"=>50000, "Tickets"=>50000);
-            die(json_encode($returnarray));
             
             http_response_code(403);
             die(json_encode(array("Error"=>"Player not authenticated.")));
