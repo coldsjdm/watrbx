@@ -16,7 +16,7 @@ function setupClientHandlerRoutes($router) {
                     "title" => "Chat Log!",
                     "type" => "rich",
                     
-                    "description" => "$chat\n\nSaid by: $user",
+                    "description" => "$user: $chat",
                     "timestamp" => $timestamp,
                     "color" => hexdec( "007182" ),
                 ]
@@ -893,7 +893,7 @@ function setupClientHandlerRoutes($router) {
             $stater->execute();
             $staterinfo = $stater->fetch(PDO::FETCH_ASSOC);
             
-            logchat($text . "\nFiltered Text: $textog", $staterinfo["username"]);
+            logchat($text, $staterinfo["username"]);
             
             $stater = $pdo->prepare("INSERT INTO chatlogs (userid, message, filtered) VALUES (:userid, :message, :filtered)");
             $stater->bindParam(':userid', $userid, PDO::PARAM_INT);
