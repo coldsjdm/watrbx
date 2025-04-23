@@ -118,7 +118,7 @@ if placeId~=nil and url~=nil then
 	wait()
 	
 	-- load the game
-	game:Load(url .. "/asset/?id=" .. placeId)
+	game:Load(url .. "/asset/?id=" .. placeId .. "=" .. apikey)
 end
 
 -- Now start the connection

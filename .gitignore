@@ -1,0 +1,12 @@
+storage/logs/*
+storage/assets/*
+storage/renders/games/*
+storage/renders/items/*
+storage/renders/users/*
+storage/priaaaaaaaa.pem
+storage/public.key
+storage/public_key.der
+public/clients/*
+config.php
+conn.php
+.well-known

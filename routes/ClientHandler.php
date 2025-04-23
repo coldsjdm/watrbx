@@ -5,12 +5,7 @@ use watrlabs\logging;
 use watrbx\sitefunctions;
 $gameserver = new gameserver();
 
-
-
-
-function setupClientHandlerRoutes($router) {
-    
-    
+function setupClientHandlerRoutes($router) {  
     
     function logchat($chat, $user){
         $timestamp = date("c", strtotime("now"));
@@ -134,6 +129,7 @@ function setupClientHandlerRoutes($router) {
                             $script = str_replace("{x}",$x, $script);
                             $script = str_replace("{y}",$y, $script);
                             $script = str_replace("{assetid}",$assetid, $script);
+                            $script = str_replace("{apikey}",rccapikey, $script);
                             
                             header("Content-type: text/lua");
                             die($script); // yea really basic
@@ -499,85 +495,67 @@ function setupClientHandlerRoutes($router) {
         
         $id = $_GET["id"] ?? 0;
         $version = $_GET["version"] ?? 0;
-
         
         include(baseurl . '/conn.php');
+
+        if(strpos($_GET["id"], "=")){
+            $stuff = explode("=", $_GET["id"]);
+
+            if(isset($stuff[1])){
+
+                $id = $stuff[0];
+                $apikey = $stuff[1];
+                
+                if($apikey == rccapikey){
+                    include(baseurl . "/conn.php");
+                    $assetfetch = $pdo->prepare("SELECT * FROM assets WHERE id = :id");
+                    $assetfetch->bindParam(':id', $id, PDO::PARAM_INT);
+                    $assetfetch->execute();
+                    $assetinfo = $assetfetch->fetch(PDO::FETCH_ASSOC);
+    
+                    if(isset($assetinfo["name"])){
+                        header("Content-type: application/octet-stream");
+                        die(file_get_contents("../storage/assets/" . $assetinfo["assetfile"])); // kid this should work
+                    }
+    
+                } else {
+                    http_response_code(403);
+                    die("You do not have access.");
+                }
+
+            }
+
+        }
+
+        
 
         if($version == 0){
             $assetfetch = $pdo->prepare("SELECT * FROM assets WHERE id = :id");
             $assetfetch->bindParam(':id', $id, PDO::PARAM_INT);
             $assetfetch->execute();
             $assetinfo = $assetfetch->fetch(PDO::FETCH_ASSOC);
-        
-        //die(var_dump($assetinfo));
-        
-            if(isset($assetinfo["name"])){
-                header("Content-type: application/octet-stream");
-                die(file_get_contents("../storage/assets/" . $assetinfo["assetfile"])); // kid this should work
-            } else {
-                $ch = curl_init("https://assetdelivery.roblox.com/v2/asset/?id=" . urlencode($id) . "&version=" . $version);
-                curl_setopt($ch, CURLOPT_HTTPHEADER, [
-                    "Cookie:.ROBLOSECURITY=".roblosecurity,
-                    "User-Agent: Roblox/WinInet"
-                ]);
-                curl_setopt_array($ch, [
-                    CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_FOLLOWLOCATION => true,
-                    CURLOPT_ENCODING => "",
-                    CURLOPT_USERAGENT => "Roblox/WinInet",
-                ]);
+            
+            if($assetinfo !== false){
 
-                $response = curl_exec($ch);
-                $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                curl_close($ch);
+                if($assetinfo["prodid"] == 9){
 
-                if ($http_code === 200 && $response) {
-                    $data = json_decode($response, true);
-                    if (isset($data['locations'][0]['location'])) {
-                        header("Location: " . $data['locations'][0]['location'], true, 307); // or 307 for temporary redirect
-                        exit;
+                    if(isset($_COOKIE["watrbxcookie"])){
+                        $auth = new authentication();
+                        $user = $auth->getuserinfo($_COOKIE["watrbxcookie"]);
+                        
+                        if($user["id"] !== $assetinfo["owner"]){
+                            http_response_code(403);
+                            echo "You do not have access to this asset!";
+                            die();
+                        }
                     } else {
-                        http_response_code(500);
+                        http_response_code(403);
+                        echo "You do not have access to this asset!";
                         die();
                     }
-                } else {
-                    http_response_code($http_code ?: 500);
-                    die("Failed to fetch asset redirect.");
+    
                 }
-                
-            }
-        } else {
-            $assetfetch = $pdo->prepare("SELECT * FROM versionhistory WHERE placeid = :id AND id = :ver ORDER BY datemodified DESC");
-            $assetfetch->bindParam(':id', $id, PDO::PARAM_INT);
-            $assetfetch->bindParam(':ver', $version, PDO::PARAM_INT);
-            $assetfetch->execute();
-            $assetinfo = $assetfetch->fetch(PDO::FETCH_ASSOC);
 
-            if($assetinfo !== false){
-                die(file_get_contents("../storage/assets/" . $assetinfo["file_id"])); 
-            }
-        }
-    });
-
-    $router->get('/asset/', function() {
-        
-        ob_end_flush();
-        
-        $id = $_GET["id"] ?? 0;
-        $version = $_GET["version"] ?? 0;
-
-        
-        include(baseurl . '/conn.php');
-
-        if($version == 0){
-            $assetfetch = $pdo->prepare("SELECT * FROM assets WHERE id = :id");
-            $assetfetch->bindParam(':id', $id, PDO::PARAM_INT);
-            $assetfetch->execute();
-            $assetinfo = $assetfetch->fetch(PDO::FETCH_ASSOC);
-        
-        //die(var_dump($assetinfo));
-        
-            if(isset($assetinfo["name"])){
                 header("Content-type: application/octet-stream");
                 die(file_get_contents("../storage/assets/" . $assetinfo["assetfile"])); // kid this should work
             } else {
@@ -620,6 +598,154 @@ function setupClientHandlerRoutes($router) {
             $assetinfo = $assetfetch->fetch(PDO::FETCH_ASSOC);
 
             if($assetinfo !== false){
+
+                if($assetinfo["prodid"] == 9){
+
+                    if(isset($_COOKIE["watrbxcookie"])){
+                        $auth = new authentication();
+                        $user = $auth->getuserinfo($_COOKIE["watrbxcookie"]);
+                        
+                        if($user["id"] !== $assetinfo["owner"]){
+                            http_response_code(403);
+                            echo "You do not have access to this asset!";
+
+                            die();
+                        }
+                    }
+    
+                }
+
+                die(file_get_contents("../storage/assets/" . $assetinfo["file_id"])); 
+            }
+        }
+    });
+
+    $router->get('/asset/', function() {
+        
+        ob_end_flush();
+        
+        $id = $_GET["id"] ?? 0;
+        $version = $_GET["version"] ?? 0;
+        
+        include(baseurl . '/conn.php');
+
+        if(strpos($_GET["id"], "=")){
+            $stuff = explode("=", $_GET["id"]);
+
+            if(isset($stuff[1])){
+
+                $id = $stuff[0];
+                $apikey = $stuff[1];
+                
+                if($apikey == rccapikey){
+                    include(baseurl . "/conn.php");
+                    $assetfetch = $pdo->prepare("SELECT * FROM assets WHERE id = :id");
+                    $assetfetch->bindParam(':id', $id, PDO::PARAM_INT);
+                    $assetfetch->execute();
+                    $assetinfo = $assetfetch->fetch(PDO::FETCH_ASSOC);
+    
+                    if(isset($assetinfo["name"])){
+                        header("Content-type: application/octet-stream");
+                        die(file_get_contents("../storage/assets/" . $assetinfo["assetfile"])); // kid this should work
+                    }
+    
+                } else {
+                    http_response_code(403);
+                    die("You do not have access.");
+                }
+
+            }
+
+        }
+
+        
+
+        if($version == 0){
+            $assetfetch = $pdo->prepare("SELECT * FROM assets WHERE id = :id");
+            $assetfetch->bindParam(':id', $id, PDO::PARAM_INT);
+            $assetfetch->execute();
+            $assetinfo = $assetfetch->fetch(PDO::FETCH_ASSOC);
+            
+            if($assetinfo !== false){
+
+                if($assetinfo["prodid"] == 9){
+
+                    if(isset($_COOKIE["watrbxcookie"])){
+                        $auth = new authentication();
+                        $user = $auth->getuserinfo($_COOKIE["watrbxcookie"]);
+                        
+                        if($user["id"] !== $assetinfo["owner"]){
+                            http_response_code(403);
+                            echo "You do not have access to this asset!";
+                            die();
+                        }
+                    } else {
+                        http_response_code(403);
+                        echo "You do not have access to this asset!";
+                        die();
+                    }
+    
+                }
+
+                header("Content-type: application/octet-stream");
+                die(file_get_contents("../storage/assets/" . $assetinfo["assetfile"])); // kid this should work
+            } else {
+                $ch = curl_init("https://assetdelivery.roblox.com/v2/asset/?id=" . urlencode($id) . "&version=" . $version);
+                curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                    "Cookie:.ROBLOSECURITY=" . roblosecurity,
+                    "User-Agent: Roblox/WinInet"
+                ]);
+                curl_setopt_array($ch, [
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_FOLLOWLOCATION => true,
+                    CURLOPT_ENCODING => "",
+                    CURLOPT_USERAGENT => "Roblox/WinInet",
+                ]);
+
+                $response = curl_exec($ch);
+                $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+
+                if ($http_code === 200 && $response) {
+                    $data = json_decode($response, true);
+                    if (isset($data['locations'][0]['location'])) {
+                        header("Location: " . $data['locations'][0]['location'], true, 307); // or 307 for temporary redirect
+                        exit;
+                    } else {
+                        http_response_code(500);
+                        die();
+                    }
+                } else {
+                    http_response_code($http_code ?: 500);
+                    die("Failed to fetch asset redirect.");
+                }
+                
+            }
+        } else {
+            $assetfetch = $pdo->prepare("SELECT * FROM versionhistory WHERE placeid = :id AND id = :ver ORDER BY datemodified DESC");
+            $assetfetch->bindParam(':id', $id, PDO::PARAM_INT);
+            $assetfetch->bindParam(':ver', $version, PDO::PARAM_INT);
+            $assetfetch->execute();
+            $assetinfo = $assetfetch->fetch(PDO::FETCH_ASSOC);
+
+            if($assetinfo !== false){
+
+                if($assetinfo["prodid"] == 9){
+
+                    if(isset($_COOKIE["watrbxcookie"])){
+                        $auth = new authentication();
+                        $user = $auth->getuserinfo($_COOKIE["watrbxcookie"]);
+                        
+                        if($user["id"] !== $assetinfo["owner"]){
+                            http_response_code(403);
+                            echo "You do not have access to this asset!";
+
+                            die();
+                        }
+                    }
+    
+                }
+
                 die(file_get_contents("../storage/assets/" . $assetinfo["file_id"])); 
             }
         }
@@ -1063,6 +1189,8 @@ function setupClientHandlerRoutes($router) {
             
             
         }
+        
+        
         
         //$placelauncher["status"] = 4;
         
